@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity WebGL 反馈消息示例</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .unity-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        #unity-canvas {
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .control-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-up { background-color: #4CAF50; color: white; }
+        .btn-down { background-color: #2196F3; color: white; }
+        .btn-left { background-color: #FF9800; color: white; }
+        .btn-right { background-color: #9C27B0; color: white; }
+        .btn-reset { background-color: #f44336; color: white; }
+        
+        .feedback-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .feedback-panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .feedback-panel h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .feedback-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        
+        .feedback-success {
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .feedback-error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .feedback-warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .feedback-method {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .feedback-message {
+            margin-top: 5px;
+            color: #666;
+        }
+        
+        .feedback-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        
+        .clear-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unity WebGL 反馈消息示例</h1>
+        
+        <div class="unity-container">
+            <canvas id="unity-canvas" width="800" height="600"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn btn-up" onclick="callUnityMethod('OnMoveForward')">向上移动</button>
+            <button class="control-btn btn-down" onclick="callUnityMethod('OnMoveBackward')">向下移动</button>
+            <button class="control-btn btn-left" onclick="callUnityMethod('OnMoveLeft')">向左移动</button>
+            <button class="control-btn btn-right" onclick="callUnityMethod('OnMoveRight')">向右移动</button>
+            <button class="control-btn btn-reset" onclick="callUnityMethod('OnResetPosition')">重置位置</button>
+        </div>
+        
+        <div class="feedback-container">
+            <div class="feedback-panel">
+                <h3>成功反馈 <span class="status-indicator status-success"></span></h3>
+                <button class="clear-btn" onclick="clearFeedback('success')">清空</button>
+                <div id="success-feedback"></div>
+            </div>
+            
+            <div class="feedback-panel">
+                <h3>错误反馈 <span class="status-indicator status-error"></span></h3>
+                <button class="clear-btn" onclick="clearFeedback('error')">清空</button>
+                <div id="error-feedback"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Unity实例（需要根据实际情况初始化）
+        let unityInstance = null;
+        
+        // 反馈消息存储
+        let feedbackMessages = {
+            success: [],
+            error: [],
+            warning: []
+        };
+        
+        // 调用Unity方法
+        function callUnityMethod(methodName) {
+            if (unityInstance && unityInstance.SendMessage) {
+                console.log(`调用Unity方法: ${methodName}`);
+                unityInstance.SendMessage('WebGLBridge', methodName);
+            } else {
+                console.warn('Unity实例未初始化或SendMessage方法不可用');
+                addFeedback('error', {
+                    methodName: methodName,
+                    message: 'Unity实例未初始化',
+                    type: 'Error',
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+        
+        // 监听Unity反馈消息
+        window.addEventListener('message', function(event) {
+            const message = event.data;
+            
+            // 检查是否是Unity反馈消息
+            if (message && message.type === 'unity_feedback') {
+                console.log('收到Unity反馈消息:', message);
+                
+                try {
+                    const feedbackData = JSON.parse(message.data);
+                    addFeedback(message.feedbackType, feedbackData);
+                } catch (error) {
+                    console.error('解析反馈数据失败:', error);
+                }
+            }
+        });
+        
+        // 添加反馈消息到界面
+        function addFeedback(type, data) {
+            const container = document.getElementById(`${type}-feedback`);
+            if (!container) return;
+            
+            // 创建反馈项
+            const feedbackItem = document.createElement('div');
+            feedbackItem.className = `feedback-item feedback-${type}`;
+            
+            const statusClass = type === 'success' ? 'status-success' : 
+                              type === 'error' ? 'status-error' : 'status-warning';
+            
+            feedbackItem.innerHTML = `
+                <div class="feedback-method">
+                    <span class="status-indicator ${statusClass}"></span>
+                    ${data.methodName}
+                </div>
+                <div class="feedback-message">${data.message}</div>
+                <div class="feedback-time">${formatTime(data.timestamp)}</div>
+            `;
+            
+            // 添加到容器顶部
+            container.insertBefore(feedbackItem, container.firstChild);
+            
+            // 限制显示数量
+            const maxItems = 10;
+            while (container.children.length > maxItems) {
+                container.removeChild(container.lastChild);
+            }
+            
+            // 存储消息
+            feedbackMessages[type].unshift(data);
+            if (feedbackMessages[type].length > maxItems) {
+                feedbackMessages[type].pop();
+            }
+        }
+        
+        // 清空反馈
+        function clearFeedback(type) {
+            const container = document.getElementById(`${type}-feedback`);
+            if (container) {
+                container.innerHTML = '';
+            }
+            feedbackMessages[type] = [];
+        }
+        
+        // 格式化时间
+        function formatTime(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString('zh-CN');
+            } catch (error) {
+                return timestamp;
+            }
+        }
+        
+        // 模拟Unity实例（用于演示）
+        function initMockUnity() {
+            unityInstance = {
+                SendMessage: function(gameObjectName, methodName) {
+                    console.log(`模拟Unity SendMessage: ${gameObjectName}.${methodName}`);
+                    
+                    // 模拟延迟和随机成功/失败
+                    setTimeout(() => {
+                        const isSuccess = Math.random() > 0.2; // 80%成功率
+                        const feedbackType = isSuccess ? 'success' : 'error';
+                        const message = isSuccess ? 
+                            `${methodName}执行成功` : 
+                            `${methodName}执行失败：模拟错误`;
+                        
+                        const feedbackData = {
+                            methodName: methodName,
+                            message: message,
+                            type: isSuccess ? 'Success' : 'Error',
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        // 模拟发送反馈消息
+                        const feedbackMessage = {
+                            type: 'unity_feedback',
+                            feedbackType: feedbackType,
+                            data: JSON.stringify(feedbackData),
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        window.postMessage(feedbackMessage, '*');
+                    }, 100);
+                }
+            };
+            
+            console.log('模拟Unity实例已初始化');
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initMockUnity();
+            
+            // 添加一些示例反馈
+            setTimeout(() => {
+                addFeedback('success', {
+                    methodName: 'OnMoveForward',
+                    message: '向前移动成功',
+                    type: 'Success',
+                    timestamp: new Date().toISOString()
+                });
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
